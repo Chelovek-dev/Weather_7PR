@@ -13,6 +13,7 @@ namespace Weather
         public MainWindow()
         {
             InitializeComponent();
+            Iint();
 
         }
         public async void Iint()

@@ -28,7 +28,7 @@ namespace Weather.Models
                 case "partly-cloudy":
                     result = "малооблачно";
                     break;
-                case "cludy":
+                case "cloudy":
                     result = "облачно с прояснениями";
                     break;
                 case "overcast":
@@ -64,10 +64,10 @@ namespace Weather.Models
                 case "thundershtorm":
                     result = "гроза";
                     break;
-                case "thundershtorm-with-rain":
+                case "thunderstorm-with-rain":
                     result = "дождь с грозой";
                     break;
-                case "thundershtorm-with-hail":
+                case "thunderstorm-with-hail":
                     result = "гроза с градом";
                     break;
             }
