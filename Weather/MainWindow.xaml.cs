@@ -1,13 +1,5 @@
-﻿using System.Text;
-using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
+﻿using System.Windows;
+using Weather.Models;
 
 namespace Weather
 {
@@ -16,9 +8,23 @@ namespace Weather
     /// </summary>
     public partial class MainWindow : Window
     {
+        DataResponce responce;
         public MainWindow()
         {
             InitializeComponent();
+
+        }
+        public async void Iint()
+        {
+            responce = await GetWeather.Get(58.009671f, 56.226184f);
+            Create(0);
+        }
+        public void Create(int idForecast)
+        {
+            foreach (Hour hour in responce.forecasts[idForecast].hours)
+            {
+                parent.Children.Add(new Elements.Item(hour));
+            }
         }
     }
 }
