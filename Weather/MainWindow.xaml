@@ -7,7 +7,11 @@
         mc:Ignorable="d"
         Title="MainWindow" Height="450" Width="800" MinHeight="450" MinWidth="800">
     <Grid>
-        <ComboBox VerticalAlignment="Top" HorizontalAlignment="Left" Width="200" Margin="10"/>
+        <ComboBox SelectionChanged="SelectDay"
+                  Name="Days"
+            VerticalAlignment="Top" HorizontalAlignment="Left" Width="200" Margin="10"/>
+        <Button Content="Обновить"
+                Click="UpdateWeather" Margin="582,9,10,389"/>
         <ScrollViewer Margin="10,37,10,10">
             <StackPanel Name="parent">
                 

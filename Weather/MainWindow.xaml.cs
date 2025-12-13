@@ -17,7 +17,12 @@ namespace Weather
         }
         public async void Iint()
         {
+            parent.Children.Clear();
             responce = await GetWeather.Get(58.009671f, 56.226184f);
+            foreach (Forecast forecast in responce.forecasts)
+            {
+                Days.Items.Add(forecast.date.ToString("dd.MM.yyyy"));
+            }
             Create(0);
         }
         public void Create(int idForecast)
@@ -26,6 +31,17 @@ namespace Weather
             {
                 parent.Children.Add(new Elements.Item(hour));
             }
+        }
+
+
+        private void SelectDay(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+        {
+            Create(Days.SelectedIndex);
+        }
+
+        private void UpdateWeather(object sender, RoutedEventArgs e)
+        {
+            Iint();
         }
     }
 }
