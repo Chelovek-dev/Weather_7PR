@@ -28,6 +28,7 @@ namespace Weather
         }
         public void Create(int idForecast)
         {
+            parent.Children.Clear();
             foreach (Hour hour in responce.forecasts[idForecast].hours)
             {
                 parent.Children.Add(new Elements.Item(hour));
