@@ -1,4 +1,5 @@
 ﻿using System.Windows;
+using Weather.Classes;
 using Weather.Models;
 
 namespace Weather
