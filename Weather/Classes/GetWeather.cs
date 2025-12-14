@@ -1,5 +1,6 @@
 ﻿using Newtonsoft.Json;
 using System.Net.Http;
+using System.Threading.Tasks;
 using Weather.Models;
 
 namespace Weather.Classes
@@ -9,7 +10,6 @@ namespace Weather.Classes
         public static string Url = "https://api.weather.yandex.ru/v2/forecast";
         public static string Key = "demo_yandex_weather_api_key_ca6d09349ba0";
 
-
         public static async Task<DataResponce> Get(float lat, float lon)
         {
             DataResponce DataResponse = null;
@@ -18,7 +18,7 @@ namespace Weather.Classes
             using (HttpClient Client = new HttpClient())
             {
                 using (HttpRequestMessage Request = new HttpRequestMessage(
-                    HttpMethod.Get, 
+                    HttpMethod.Get,
                     url))
                 {
                     Request.Headers.Add("X-Yandex-Weather-Key", Key);
@@ -27,9 +27,8 @@ namespace Weather.Classes
                     {
                         string ContentResponse = await Response.Content.ReadAsStringAsync();
                         DataResponse = JsonConvert.DeserializeObject<DataResponce>(ContentResponse);
-                    }    
+                    }
                     return DataResponse;
-
                 }
             }
         }
