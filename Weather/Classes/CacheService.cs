@@ -10,23 +10,22 @@ namespace Weather.Services
 {
     public class CacheService
     {
-        private readonly WeatherDbContext _dbContext;
         private const int DAILY_REQUEST_LIMIT = 50;
         private const int CACHE_VALID_HOURS = 3;
+        private const int REQUEST_INTERVAL_MINUTES = 30;
 
         public void Dispose()
         {
-            _dbContext?.Dispose();
         }
 
         public CacheService()
         {
-            _dbContext = new WeatherDbContext();
         }
 
         public async Task<bool> CanMakeRequestAsync()
         {
             var today = DateTime.Today;
+            var now = DateTime.Now;
 
             using (var db = new WeatherDbContext())
             {
@@ -43,8 +42,8 @@ namespace Weather.Services
                     return false;
                 }
 
-                var timeSinceLastRequest = DateTime.Now - log.LastRequestTime;
-                if (timeSinceLastRequest.TotalMinutes < 1.0)
+                var timeSinceLastRequest = now - log.LastRequestTime;
+                if (timeSinceLastRequest.TotalMinutes < REQUEST_INTERVAL_MINUTES)
                 {
                     return false;
                 }
@@ -77,7 +76,7 @@ namespace Weather.Services
                 {
                     log.RequestCount++;
                     log.LastRequestTime = now;
-                    db.RequestLogs.Update(log);
+                    db.Entry(log).State = EntityState.Modified;
                 }
 
                 await db.SaveChangesAsync();
@@ -89,10 +88,10 @@ namespace Weather.Services
             using (var db = new WeatherDbContext())
             {
                 var cache = await db.WeatherCaches
-                    .Where(c => c.City == city &&
+                    .AsNoTracking()
+                    .Where(c => c.City.ToLower() == city.ToLower() &&
                            Math.Abs(c.Latitude - lat) < 0.001 &&
-                           Math.Abs(c.Longitude - lon) < 0.001 &&
-                           c.ValidUntil > DateTime.Now)
+                           Math.Abs(c.Longitude - lon) < 0.001)
                     .OrderByDescending(c => c.LastUpdated)
                     .FirstOrDefaultAsync();
 
@@ -105,12 +104,40 @@ namespace Weather.Services
             }
         }
 
+        public async Task<bool> ShouldUpdateFromApiAsync(string city, float lat, float lon)
+        {
+            var canMakeRequest = await CanMakeRequestAsync();
+            if (!canMakeRequest)
+            {
+                return false;
+            }
+
+            using (var db = new WeatherDbContext())
+            {
+                var cache = await db.WeatherCaches
+                    .AsNoTracking()
+                    .Where(c => c.City.ToLower() == city.ToLower() &&
+                           Math.Abs(c.Latitude - lat) < 0.001 &&
+                           Math.Abs(c.Longitude - lon) < 0.001)
+                    .FirstOrDefaultAsync();
+
+                if (cache == null)
+                {
+                    return true;
+                }
+
+                var timeSinceLastUpdate = DateTime.Now - cache.LastUpdated;
+                return timeSinceLastUpdate.TotalHours >= 1;
+            }
+        }
+
         public async Task SaveToCacheAsync(string city, float lat, float lon, DataResponce weatherData)
         {
             using (var db = new WeatherDbContext())
             {
                 var existing = await db.WeatherCaches
-                    .FirstOrDefaultAsync(c => c.City == city &&
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(c => c.City.ToLower() == city.ToLower() &&
                            Math.Abs(c.Latitude - lat) < 0.001 &&
                            Math.Abs(c.Longitude - lon) < 0.001);
 
@@ -167,6 +194,42 @@ namespace Weather.Services
                     db.RequestLogs.RemoveRange(oldLogs);
                     await db.SaveChangesAsync();
                 }
+            }
+        }
+
+        public async Task<int> GetRemainingRequestsAsync()
+        {
+            var today = DateTime.Today;
+
+            using (var db = new WeatherDbContext())
+            {
+                var log = await db.RequestLogs
+                    .FirstOrDefaultAsync(r => r.RequestDate == today);
+
+                if (log == null)
+                {
+                    return DAILY_REQUEST_LIMIT;
+                }
+
+                return Math.Max(0, DAILY_REQUEST_LIMIT - log.RequestCount);
+            }
+        }
+
+        public async Task<DateTime?> GetNextRequestTimeAsync()
+        {
+            var today = DateTime.Today;
+
+            using (var db = new WeatherDbContext())
+            {
+                var log = await db.RequestLogs
+                    .FirstOrDefaultAsync(r => r.RequestDate == today);
+
+                if (log == null)
+                {
+                    return null;
+                }
+
+                return log.LastRequestTime.AddMinutes(REQUEST_INTERVAL_MINUTES);
             }
         }
     }

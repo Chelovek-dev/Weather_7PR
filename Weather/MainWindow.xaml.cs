@@ -56,7 +56,7 @@ namespace Weather
             }
         }
 
-        public async Task LoadWeatherData(bool forceRefresh = false)
+        public async Task LoadWeatherData(bool forceApi = false)
         {
             parent.Children.Clear();
             Days.Items.Clear();
@@ -66,36 +66,45 @@ namespace Weather
                 DataResponce weatherData = null;
                 bool fromCache = false;
 
-                if (!forceRefresh)
+                if (!forceApi)
                 {
-                    weatherData = await _cacheService.GetCachedWeatherAsync(currentCity, currentLat, currentLon);
-                    if (weatherData != null)
+                    var cachedData = await _cacheService.GetCachedWeatherAsync(currentCity, currentLat, currentLon);
+                    if (cachedData != null)
                     {
+                        weatherData = cachedData;
                         fromCache = true;
                         responce = weatherData;
                     }
                 }
 
-                if (weatherData == null)
+                if (weatherData == null || forceApi)
                 {
                     try
                     {
-                        weatherData = await GetWeather.Get(currentLat, currentLon, currentCity);
+                        weatherData = await GetWeather.Get(currentLat, currentLon, currentCity, forceApi);
                         responce = weatherData;
+                        fromCache = false;
                     }
                     catch (Exception apiEx)
                     {
-                        weatherData = await _cacheService.GetCachedWeatherAsync(currentCity, currentLat, currentLon);
-                        if (weatherData != null)
+                        if (!forceApi)
                         {
-                            fromCache = true;
-                            responce = weatherData;
-
-                            Dispatcher.Invoke(() =>
+                            weatherData = await _cacheService.GetCachedWeatherAsync(currentCity, currentLat, currentLon);
+                            if (weatherData != null)
                             {
-                                MessageBox.Show($"Используются кэшированные данные. API недоступно: {apiEx.Message}",
-                                    "Информация", MessageBoxButton.OK, MessageBoxImage.Warning);
-                            });
+                                fromCache = true;
+                                responce = weatherData;
+
+                                Dispatcher.Invoke(() =>
+                                {
+                                    MessageBox.Show($"Используются кэшированные данные. API недоступно: {apiEx.Message}",
+                                        "Информация", MessageBoxButton.OK, MessageBoxImage.Warning);
+                                });
+                            }
+                            else
+                            {
+                                throw apiEx;
+                            }
                         }
                         else
                         {
@@ -173,46 +182,12 @@ namespace Weather
                 SearchButton.IsEnabled = false;
                 SearchButton.Content = "Поиск...";
 
-                bool foundInCache = false;
-                var cachedData = await _cacheService.GetCachedWeatherAsync(cityName, 0, 0);
+                var coordinates = await Geocoding.GetCoordinates(cityName);
+                currentLat = coordinates.lat;
+                currentLon = coordinates.lon;
+                currentCity = cityName;
 
-                if (cachedData != null)
-                {
-                    var dialogResult = MessageBox.Show($"Найдены кэшированные данные для {cityName}. Использовать их?",
-                        "Кэшированные данные", MessageBoxButton.YesNo, MessageBoxImage.Question);
-
-                    if (dialogResult == MessageBoxResult.Yes)
-                    {
-                        foundInCache = true;
-                        currentCity = cityName;
-                        LocationText.Text = $"{cityName} (из кэша)";
-                        responce = cachedData;
-
-                        Dispatcher.Invoke(() =>
-                        {
-                            Days.Items.Clear();
-                            foreach (Forecast forecast in responce.forecasts)
-                            {
-                                Days.Items.Add(forecast.date.ToString("dd.MM.yyyy"));
-                            }
-                            if (Days.Items.Count > 0)
-                            {
-                                Days.SelectedIndex = 0;
-                            }
-                            Create(0);
-                        });
-                    }
-                }
-
-                if (!foundInCache)
-                {
-                    var coordinates = await Geocoding.GetCoordinates(cityName);
-                    currentLat = coordinates.lat;
-                    currentLon = coordinates.lon;
-                    currentCity = cityName;
-
-                    await LoadWeatherData();
-                }
+                await LoadWeatherData(true);
             }
             catch (Exception ex)
             {
